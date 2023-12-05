@@ -76,3 +76,26 @@ class SubstitutionTest extends AnyFunSuite:
     assert(composeSubstitution(s1, s2) === result)
   }
 
+  test("poly subst should substitute quantified vars") {
+    val s: Substitution = HashMap(
+      "a" -> MonoType.concrete("Int"),
+    )
+
+    val m = MonoType.Var("a")
+    val t = PolyType.ForAll("a", PolyType.Mono(m))
+
+    val result = PolyType.ForAll("a", PolyType.Mono(MonoType.concrete("Int")))
+    assert(applySubstitution(s, t) === result)
+  }
+
+  test("poly subst should substitute free vars") {
+    val s: Substitution = HashMap(
+      "a" -> MonoType.concrete("Int"),
+    )
+
+    val m = MonoType.Var("a")
+    val t = PolyType.ForAll("x", PolyType.Mono(m))
+
+    val result = PolyType.ForAll("x", PolyType.Mono(MonoType.concrete("Int")))
+    assert(applySubstitution(s, t) === result)
+  }

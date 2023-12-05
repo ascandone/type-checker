@@ -80,3 +80,15 @@ private def unifyTraverse(args1: List[MonoType], args2: List[MonoType], acc: Sub
       for sub <- unify(t1_, t2_)
           sub2 <- unifyTraverse(tl1, tl2, sub)
       yield composeSubstitution(sub2, sub)
+
+enum PolyType:
+  case Mono(t: MonoType)
+  case ForAll(name: Ident, p: PolyType)
+
+def applySubstitution(substitution: Substitution, polyType: PolyType): PolyType =
+  polyType match
+    case PolyType.Mono(m) => PolyType.Mono(applySubstitution(substitution, m))
+    case PolyType.ForAll(v, m) =>
+      // TODO why not substitution.removed(v) ?
+      val m1 = applySubstitution(substitution, m)
+      PolyType.ForAll(v, m1)
