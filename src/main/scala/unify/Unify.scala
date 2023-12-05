@@ -92,3 +92,25 @@ def applySubstitution(substitution: Substitution, polyType: PolyType): PolyType 
       // TODO why not substitution.removed(v) ?
       val m1 = applySubstitution(substitution, m)
       PolyType.ForAll(v, m1)
+
+def freshVar(): String =
+  java.util.UUID.randomUUID().toString
+
+def instantiate(polyType: PolyType): MonoType =
+  Instantiate().instantiate(polyType)
+
+private case class Instantiate():
+  private val mappings = scala.collection.mutable.HashMap.empty[String, String]
+
+  def instantiate(polyType: PolyType): MonoType =
+    polyType match
+      case PolyType.Mono(MonoType.Concrete(c, args)) =>
+        val args1 = args.map(arg => this.instantiate(PolyType.Mono(arg)))
+        MonoType.Concrete(c, args1)
+      case PolyType.Mono(MonoType.Var(v)) =>
+        val v2 = mappings.getOrElse(v, v)
+        MonoType.Var(v2)
+      case PolyType.ForAll(v, p) =>
+        mappings.update(v, freshVar())
+        this.instantiate(p)
+
