@@ -1,5 +1,5 @@
 import org.scalatest.funsuite.AnyFunSuite
-import unify.*
+import typechecker.*
 
 import scala.collection.immutable.HashMap;
 

@@ -1,4 +1,4 @@
-package unify
+package typechecker
 
 import scala.annotation.tailrec
 import scala.collection.immutable.{HashMap, Map}
@@ -137,3 +137,27 @@ def generalize(context: Context, polyType: PolyType): PolyType =
   val pFv = freeVars(polyType)
   val d = pFv diff ctxFv
   d.foldLeft(polyType)((p, v) => PolyType.ForAll(v, p))
+
+enum Expr:
+  case Var(name: Ident)
+  case Abs(param: Ident, body: Expr)
+
+case class TypeError() extends Exception()
+
+def algorithmW(context: Context, expr: Expr): (Substitution, MonoType) =
+  expr match
+    case Expr.Var(ident) =>
+        context.get(ident) match
+          case None => throw TypeError()
+          case Some(p) => (HashMap.empty, instantiate(p))
+    case Expr.Abs(param, body) =>
+      val v = MonoType.Var(freshVar())
+
+      val (subst, ret) = algorithmW(
+        context = context.updated(param, v),
+        expr = body
+      )
+
+      val f = MonoType.concrete("->", v, ret)
+
+      (subst, applySubstitution(subst, f))

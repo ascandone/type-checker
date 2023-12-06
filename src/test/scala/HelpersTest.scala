@@ -1,6 +1,6 @@
 import org.scalatest.funsuite.AnyFunSuite
-import unify.monoToPoly
-import unify.*
+import typechecker.monoToPoly
+import typechecker.*
 
 import scala.collection.immutable.HashMap
 
