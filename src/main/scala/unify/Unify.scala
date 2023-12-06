@@ -85,6 +85,9 @@ enum PolyType:
   case Mono(t: MonoType)
   case ForAll(name: Ident, p: PolyType)
 
+given monoToPoly: Conversion[MonoType, PolyType] with
+  override def apply(m: MonoType): PolyType = PolyType.Mono(m)
+
 def applySubstitution(substitution: Substitution, polyType: PolyType): PolyType =
   polyType match
     case PolyType.Mono(m) => PolyType.Mono(applySubstitution(substitution, m))
@@ -114,3 +117,23 @@ private case class Instantiate():
         mappings.update(v, freshVar())
         this.instantiate(p)
 
+def freeVars(monoType: MonoType): Set[String] =
+  monoType match
+    case MonoType.Var(v) => Set(v)
+    case MonoType.Concrete(_, args) => args.flatMap(freeVars).toSet
+
+def freeVars(polyType: PolyType): Set[String] =
+  polyType match
+    case PolyType.Mono(m) => freeVars(m)
+    case PolyType.ForAll(v, m) => freeVars(m).filter(_ != v)
+
+type Context = HashMap[String, PolyType]
+
+def freeVars(context: Context): Set[String] =
+  context.values.flatMap(freeVars).toSet
+
+def generalize(context: Context, polyType: PolyType): PolyType =
+  val ctxFv = freeVars(context)
+  val pFv = freeVars(polyType)
+  val d = pFv diff ctxFv
+  d.foldLeft(polyType)((p, v) => PolyType.ForAll(v, p))
