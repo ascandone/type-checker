@@ -142,13 +142,13 @@ enum Expr:
   case App(f: Expr, x: Expr)
   case Let(ident: Ident, value: Expr, body: Expr)
 
-case class TypeError() extends Exception()
+case class TypeError(reason: String) extends Exception(reason)
 
 def algorithmW(context: Context, expr: Expr): (Substitution, MonoType) =
   expr match
     case Expr.Var(ident) =>
         context.get(ident) match
-          case None => throw TypeError()
+          case None => throw TypeError(s"Unbound variable: `$ident`")
           case Some(p) => (Substitution.empty, instantiate(p))
     case Expr.Abs(param, body) =>
       val v = MonoType.Var(freshIdent())
@@ -162,10 +162,10 @@ def algorithmW(context: Context, expr: Expr): (Substitution, MonoType) =
       val fresh = MonoType.Var(freshIdent())
       val (s1, t1) = algorithmW(context, f)
       val (s2, t2) = algorithmW(s1(context), x)
-      val s3 = unify(
-        t1 = s2(t1),
-        t2 = MonoType.concrete("->", t2, fresh)
-      ).getOrElse { throw TypeError() }
+      val s3 =
+        unify(s2(t1), MonoType.concrete("->", t2, fresh)) match
+          case Left(e) => throw TypeError(s"Unify error ($e)")
+          case Right(s) => s
       (s3 compose s2 compose s1, s3(fresh))
     case Expr.Let(ident, value, body) =>
       val (s1, t1) = algorithmW(context, value)
@@ -174,4 +174,3 @@ def algorithmW(context: Context, expr: Expr): (Substitution, MonoType) =
         val context2 = context.updated(ident, t1Gen)
         algorithmW(s1(context2), body)
       (s2 compose s1, t2)
-
