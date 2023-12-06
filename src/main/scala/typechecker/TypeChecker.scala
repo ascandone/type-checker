@@ -140,6 +140,7 @@ enum Expr:
   case Var(name: Ident)
   case Abs(param: Ident, body: Expr)
   case App(f: Expr, x: Expr)
+  case Let(ident: Ident, value: Expr, body: Expr)
 
 case class TypeError() extends Exception()
 
@@ -166,4 +167,11 @@ def algorithmW(context: Context, expr: Expr): (Substitution, MonoType) =
         t2 = MonoType.concrete("->", t2, fresh)
       ).getOrElse { throw TypeError() }
       (s3 compose s2 compose s1, s3(fresh))
+    case Expr.Let(ident, value, body) =>
+      val (s1, t1) = algorithmW(context, value)
+      val (s2, t2) =
+        val t1Gen = generalize(context, t1)
+        val context2 = context.updated(ident, t1Gen)
+        algorithmW(s1(context2), body)
+      (s2 compose s1, t2)
 
