@@ -12,8 +12,8 @@ class WTest extends AnyFunSuite:
     )
 
 
-    val result = (HashMap.empty, MonoType.concrete("Int"))
-    assert(algorithmW(ctx, e) === result)
+    val result = (Substitution.empty, MonoType.concrete("Int"))
+    assert(algorithmW(ctx, e) == result)
   }
 
   test("type check poly variable bound in context") {
@@ -22,12 +22,10 @@ class WTest extends AnyFunSuite:
       "id" -> PolyType.ForAll("a", MonoType.Var("a"))
     )
 
-    val result = (HashMap.empty, MonoType.concrete("Int"))
-
     val out = algorithmW(ctx, e)
     out match
       case (subst, MonoType.Var(v)) =>
-        assert(subst == HashMap.empty)
+        assert(subst == Substitution.empty)
         assert(v != "a")
       case _ => fail(out.toString())
   }
@@ -47,7 +45,7 @@ class WTest extends AnyFunSuite:
 
     out match
       case (subst, MonoType.Concrete("->", MonoType.Var(v1) :: MonoType.Var(v2) :: Nil)) =>
-        assert(subst == HashMap.empty)
+        assert(subst == Substitution.empty)
         assert(v1 == v2)
         assert(v1 != "a")
       case _ => fail(out.toString())

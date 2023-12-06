@@ -15,7 +15,7 @@ class UnifyTest extends AnyFunSuite:
     val t1 = MonoType.concrete("Int")
     val t2 = MonoType.concrete("Int")
 
-    assert(unify(t1, t2) === Right(HashMap.empty))
+    assert(unify(t1, t2) === Right(Substitution.empty))
   }
 
   test("unifying two concrete types with different args should fail") {
@@ -29,7 +29,7 @@ class UnifyTest extends AnyFunSuite:
     val t1 = MonoType.Var("a")
     val t2 = MonoType.Var("a")
 
-    assert(unify(t1, t2) === Right(HashMap.empty))
+    assert(unify(t1, t2) === Right(Substitution.empty))
   }
 
   test("occurs check failure should not unify") {
@@ -43,7 +43,7 @@ class UnifyTest extends AnyFunSuite:
     val t1 = MonoType.Var("a")
     val t2 = MonoType.concrete("Bool")
 
-    assert(unify(t1, t2) === Right(HashMap(
+    assert(unify(t1, t2) === Right(Substitution.fromEntries(
       "a" -> MonoType.concrete("Bool")
     )))
   }
@@ -52,7 +52,7 @@ class UnifyTest extends AnyFunSuite:
     val t1 = MonoType.concrete("Bool")
     val t2 = MonoType.Var("a")
 
-    assert(unify(t1, t2) === Right(HashMap(
+    assert(unify(t1, t2) === Right(Substitution.fromEntries(
       "a" -> MonoType.concrete("Bool")
     )))
   }
@@ -61,7 +61,7 @@ class UnifyTest extends AnyFunSuite:
     val t1 = MonoType.Var("a")
     val t2 = MonoType.Var("b")
 
-    assert(unify(t1, t2) === Right(HashMap(
+    assert(unify(t1, t2) === Right(Substitution.fromEntries(
       "a" -> MonoType.Var("b")
     )))
   }
@@ -70,7 +70,7 @@ class UnifyTest extends AnyFunSuite:
     val t1 = MonoType.concrete("List", MonoType.Var("a"))
     val t2 = MonoType.concrete("List", MonoType.Var("b"))
 
-    assert(unify(t1, t2) === Right(HashMap(
+    assert(unify(t1, t2) === Right(Substitution.fromEntries(
       "a" -> MonoType.Var("b")
     )))
   }
@@ -86,7 +86,7 @@ class UnifyTest extends AnyFunSuite:
     val t1 = MonoType.concrete("->", MonoType.Var("a1"), MonoType.Var("b1"))
     val t2 = MonoType.concrete("->", MonoType.Var("a2"), MonoType.Var("b2"))
 
-    assert(unify(t1, t2) === Right(HashMap(
+    assert(unify(t1, t2) === Right(Substitution.fromEntries(
       "a1" -> MonoType.Var("a2"),
       "b1" -> MonoType.Var("b2"),
     )))

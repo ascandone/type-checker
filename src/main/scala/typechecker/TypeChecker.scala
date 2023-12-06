@@ -6,6 +6,9 @@ import scala.collection.immutable.{HashMap, Map}
 // Ident for type variables
 type Ident = String
 
+def freshIdent(): Ident =
+  java.util.UUID.randomUUID().toString
+
 enum MonoType:
   case Var(ident: Ident)
   case Concrete(name: String, args: List[MonoType] = Nil)
@@ -14,30 +17,41 @@ object MonoType:
   def concrete(name: String, args: MonoType*): MonoType =
     MonoType.Concrete(name, args.toList)
 
-type Substitution = Map[Ident, MonoType]
+enum PolyType:
+  case Mono(t: MonoType)
+  case ForAll(name: Ident, p: PolyType)
 
-def applySubstitution(substitution: Substitution, monoType: MonoType): MonoType =
-  monoType match
-    case MonoType.Var(ident) =>
-      substitution.getOrElse(ident, monoType)
-    case MonoType.Concrete(name, args) =>
-      val mappedArgs = args.map(applySubstitution(substitution, _))
-      MonoType.Concrete(name, mappedArgs)
+given monoToPoly: Conversion[MonoType, PolyType] with
+  override def apply(m: MonoType): PolyType = PolyType.Mono(m)
 
-/// Return a substitution that behaves in the same way as applying s1 and then s2
-def composeSubstitution(s1: Substitution, s2: Substitution): Substitution =
-  val entries = (s1.keys ++ s2.keys).map(k =>
-    val m = applySubstitution(
-      substitution = s2,
-      monoType = applySubstitution(
-        substitution = s1,
-        monoType = MonoType.Var(k)
-      )
+case class Substitution(mappings: Map[Ident, MonoType]):
+  def apply(monoType: MonoType): MonoType =
+    monoType match
+      case MonoType.Var(ident) =>
+        mappings.getOrElse(ident, monoType)
+      case MonoType.Concrete(name, args) =>
+        val mappedArgs = args.map(this.apply)
+        MonoType.Concrete(name, mappedArgs)
+
+  def apply(polyType: PolyType): PolyType =
+    polyType match
+      case PolyType.Mono(m) => PolyType.Mono(this.apply(m))
+      case PolyType.ForAll(v, m) =>
+        // TODO why not substitution.removed(v) ?
+        val m1 = this.apply(m)
+        PolyType.ForAll(v, m1)
+
+  /// Return a substitution that behaves in the same way as applying `this` and then `other`
+  def compose(other: Substitution): Substitution =
+    val entries = (mappings.keys ++ other.mappings.keys).map(k =>
+      val m = other(this(MonoType.Var(k)))
+      (k, m)
     )
+    Substitution.fromEntries(entries.toSeq*)
 
-    (k, m)
-  )
-  HashMap.from(entries)
+object Substitution:
+  def fromEntries(entries: (Ident, MonoType)*): Substitution = Substitution(Map(entries *))
+  def empty: Substitution = Substitution(HashMap.empty)
 
 enum UnifyError:
   case CannotUnify
@@ -53,13 +67,13 @@ def unify(t1: MonoType, t2: MonoType): Either[UnifyError, Substitution] =
       unifyTraverse(args1, args2)
 
     case (MonoType.Var(v1), MonoType.Var(v2)) if v1 == v2 =>
-      Right(HashMap.empty)
+      Right(Substitution.empty)
 
     case (MonoType.Var(v1), _) if occursCheck(v1, t2) =>
       Left(UnifyError.OccursCheck)
 
     case (MonoType.Var(v1), _) =>
-      Right(HashMap(v1 -> t2))
+      Right(Substitution.fromEntries(v1 -> t2))
 
     case (_, MonoType.Var(v2)) =>
       unify(t2, t1)
@@ -70,34 +84,14 @@ private def occursCheck(v: Ident, t: MonoType): Boolean =
     case MonoType.Concrete(_, args) =>
       args.exists(occursCheck(v, _))
 
-private def unifyTraverse(args1: List[MonoType], args2: List[MonoType], acc: Substitution = HashMap.empty): Either[UnifyError, Substitution] =
+private def unifyTraverse(args1: List[MonoType], args2: List[MonoType], acc: Substitution = Substitution.empty): Either[UnifyError, Substitution] =
   (args1, args2) match
-    case (Nil, Nil) => Right(HashMap.empty)
+    case (Nil, Nil) => Right(acc)
     case (_ :: _, Nil) | (Nil, _ :: _) => Left(UnifyError.CannotUnify)
     case (t1 :: tl1, t2 :: tl2) =>
-      val t1_ = applySubstitution(acc, t1)
-      val t2_ = applySubstitution(acc, t2)
-      for sub <- unify(t1_, t2_)
+      for sub <- unify(t1=acc(t1), t2=acc(t2))
           sub2 <- unifyTraverse(tl1, tl2, sub)
-      yield composeSubstitution(sub2, sub)
-
-enum PolyType:
-  case Mono(t: MonoType)
-  case ForAll(name: Ident, p: PolyType)
-
-given monoToPoly: Conversion[MonoType, PolyType] with
-  override def apply(m: MonoType): PolyType = PolyType.Mono(m)
-
-def applySubstitution(substitution: Substitution, polyType: PolyType): PolyType =
-  polyType match
-    case PolyType.Mono(m) => PolyType.Mono(applySubstitution(substitution, m))
-    case PolyType.ForAll(v, m) =>
-      // TODO why not substitution.removed(v) ?
-      val m1 = applySubstitution(substitution, m)
-      PolyType.ForAll(v, m1)
-
-def freshVar(): String =
-  java.util.UUID.randomUUID().toString
+      yield sub2 compose sub
 
 def instantiate(polyType: PolyType): MonoType =
   Instantiate().instantiate(polyType)
@@ -114,7 +108,7 @@ private case class Instantiate():
         val v2 = mappings.getOrElse(v, v)
         MonoType.Var(v2)
       case PolyType.ForAll(v, p) =>
-        mappings.update(v, freshVar())
+        mappings.update(v, freshIdent())
         this.instantiate(p)
 
 def freeVars(monoType: MonoType): Set[String] =
@@ -149,9 +143,9 @@ def algorithmW(context: Context, expr: Expr): (Substitution, MonoType) =
     case Expr.Var(ident) =>
         context.get(ident) match
           case None => throw TypeError()
-          case Some(p) => (HashMap.empty, instantiate(p))
+          case Some(p) => (Substitution.empty, instantiate(p))
     case Expr.Abs(param, body) =>
-      val v = MonoType.Var(freshVar())
+      val v = MonoType.Var(freshIdent())
 
       val (subst, ret) = algorithmW(
         context = context.updated(param, v),
@@ -160,4 +154,4 @@ def algorithmW(context: Context, expr: Expr): (Substitution, MonoType) =
 
       val f = MonoType.concrete("->", v, ret)
 
-      (subst, applySubstitution(subst, f))
+      (subst, subst(f))
