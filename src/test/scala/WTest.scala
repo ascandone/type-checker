@@ -40,7 +40,6 @@ class WTest extends AnyFunSuite:
 
   test("type check abstraction") {
     val e = Expr.Abs("a", Expr.Var("a"))
-    val result = (HashMap.empty, MonoType.concrete("Int"))
     val out = algorithmW(HashMap.empty, e)
 
     out match
@@ -49,4 +48,16 @@ class WTest extends AnyFunSuite:
         assert(v1 == v2)
         assert(v1 != "a")
       case _ => fail(out.toString())
+  }
+
+  test("type check application") {
+    // id := \x.x
+    val id = Expr.Abs("a", Expr.Var("a"))
+    // id 42
+    val e = Expr.App(id, Expr.Var("x"))
+    val ctx: Context = HashMap(
+      "x" -> MonoType.concrete("Int")
+    )
+
+    assert(algorithmW(ctx, e)._2 == MonoType.concrete("Int"))
   }

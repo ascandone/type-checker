@@ -24,6 +24,8 @@ enum PolyType:
 given monoToPoly: Conversion[MonoType, PolyType] with
   override def apply(m: MonoType): PolyType = PolyType.Mono(m)
 
+type Context = HashMap[String, PolyType]
+
 case class Substitution(mappings: Map[Ident, MonoType]):
   def apply(monoType: MonoType): MonoType =
     monoType match
@@ -40,6 +42,10 @@ case class Substitution(mappings: Map[Ident, MonoType]):
         // TODO why not substitution.removed(v) ?
         val m1 = this.apply(m)
         PolyType.ForAll(v, m1)
+
+  def apply(context: Context): Context =
+    val entries = context.map((k, v) => (k, this(v))).toSeq
+    HashMap(entries*)
 
   /// Return a substitution that behaves in the same way as applying `this` and then `other`
   def compose(other: Substitution): Substitution =
@@ -121,8 +127,6 @@ def freeVars(polyType: PolyType): Set[String] =
     case PolyType.Mono(m) => freeVars(m)
     case PolyType.ForAll(v, m) => freeVars(m).filter(_ != v)
 
-type Context = HashMap[String, PolyType]
-
 def freeVars(context: Context): Set[String] =
   context.values.flatMap(freeVars).toSet
 
@@ -135,6 +139,7 @@ def generalize(context: Context, polyType: PolyType): PolyType =
 enum Expr:
   case Var(name: Ident)
   case Abs(param: Ident, body: Expr)
+  case App(f: Expr, x: Expr)
 
 case class TypeError() extends Exception()
 
@@ -146,12 +151,19 @@ def algorithmW(context: Context, expr: Expr): (Substitution, MonoType) =
           case Some(p) => (Substitution.empty, instantiate(p))
     case Expr.Abs(param, body) =>
       val v = MonoType.Var(freshIdent())
-
       val (subst, ret) = algorithmW(
         context = context.updated(param, v),
         expr = body
       )
-
       val f = MonoType.concrete("->", v, ret)
-
       (subst, subst(f))
+    case Expr.App(f, x) =>
+      val fresh = MonoType.Var(freshIdent())
+      val (s1, t1) = algorithmW(context, f)
+      val (s2, t2) = algorithmW(s1(context), x)
+      val s3 = unify(
+        t1 = s2(t1),
+        t2 = MonoType.concrete("->", t2, fresh)
+      ).getOrElse { throw TypeError() }
+      (s3 compose s2 compose s1, s3(fresh))
+
