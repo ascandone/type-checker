@@ -62,6 +62,22 @@ class WTest extends AnyFunSuite:
     assert(algorithmW(ctx, e)._2 == MonoType.concrete("Int"))
   }
 
+  test("type check x => x+1") {
+
+    // \x -> add1 x
+    val e = Expr.Abs("x",
+      Expr.App(
+        f = Expr.Var("add1"),
+        x = Expr.Var("x")))
+
+    val ctx: Context = HashMap(
+      "add1" -> MonoType.concrete("->", MonoType.concrete("Int"), MonoType.concrete("Int")),
+      "add1" -> MonoType.concrete("->", MonoType.concrete("Int"), MonoType.concrete("Int"))
+    )
+
+    assert(algorithmW(ctx, e)._2 == MonoType.concrete("->", MonoType.concrete("Int"), MonoType.concrete("Int")))
+  }
+
   test("type check let") {
     val id = Expr.Abs("a", Expr.Var("a"))
 
