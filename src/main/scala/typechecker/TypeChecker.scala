@@ -174,3 +174,30 @@ def algorithmW(context: Context, expr: Expr): (Substitution, MonoType) =
         val context2 = context.updated(ident, t1Gen)
         algorithmW(s1(context2), body)
       (s2 compose s1, t2)
+
+enum TypeCheckError:
+  case UnboundVar(name: String)
+  case Unify(err: UnifyError)
+
+def algorithmM(context: Context, expr: Expr, t: MonoType): Either[TypeCheckError, Substitution] =
+  expr match
+    case Expr.Var(ident) =>
+      context.get(ident) match
+        case None => Left(TypeCheckError.UnboundVar(ident))
+        case Some(p) =>
+          val m = instantiate(p)
+          unify(t, m).left.map(TypeCheckError.Unify.apply)
+    case Expr.Abs(param, body) =>
+      val b1 = freshIdent()
+      val b2 = freshIdent()
+      for s1 <- unify(t, MonoType.concrete("->", MonoType.Var(b1), MonoType.Var(b2))).left.map(TypeCheckError.Unify.apply)
+          newContext: Context = s1(context).updated(param, s1(MonoType.Var(b1)))
+          s2 <- algorithmM(newContext, body, s1(MonoType.Var(b2)))
+      yield s2 compose s1
+    case Expr.App(f, x) =>
+      val b = freshIdent()
+      for s1 <- algorithmM(context, f, MonoType.concrete("->", MonoType.Var(b), t))
+          newContext: Context = s1(context)
+          s2 <- algorithmM(newContext, x, s1(MonoType.Var(b)))
+        yield s2 compose s1
+    case Expr.Let(_, _, _) => ???
