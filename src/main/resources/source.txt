@@ -5,3 +5,10 @@ let apply f x = f x
 let z = apply succ one
 
 let compose f g x = g (f x)
+
+let hd = head empty
+
+let example =
+  let f x = x in
+  let a = f head in
+  f one

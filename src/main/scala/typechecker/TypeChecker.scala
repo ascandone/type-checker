@@ -32,6 +32,19 @@ given monoToPoly: Conversion[MonoType, PolyType] with
 type Context = HashMap[String, PolyType]
 
 case class Substitution(mappings: Map[Ident, MonoType]):
+  override def toString: String =
+
+    val sb = StringBuilder()
+    sb ++= "Subst{"
+    for ((k, v), index) <- mappings.zipWithIndex do
+      if index != 0 then
+        sb ++= ", "
+      sb ++= s"$k: "
+      val m = pprint(v)
+      sb ++= m
+    sb ++= "}"
+    sb.toString()
+
   def apply(monoType: MonoType): MonoType =
     monoType match
       case MonoType.Var(ident) =>
@@ -176,7 +189,7 @@ enum TypeCheckError:
   case UnboundVar(name: String)
   case Unify(err: UnifyError)
 
-def algorithmM(context: Context, expr: Expr, t: MonoType = MonoType.Var(freshIdent())): Either[TypeCheckError, Substitution] =
+def algorithmM(context: Context, expr: Expr, t: MonoType): Either[TypeCheckError, Substitution] =
   expr match
     case Expr.Var(ident) =>
       context.get(ident) match
@@ -192,9 +205,15 @@ def algorithmM(context: Context, expr: Expr, t: MonoType = MonoType.Var(freshIde
           s2 <- algorithmM(newContext, body, s1(MonoType.Var(b2)))
       yield s1 compose s2
     case Expr.App(f, x) =>
-      val b = freshIdent()
-      for s1 <- algorithmM(context, f, MonoType.concrete("->", MonoType.Var(b), t))
+      val tParam = freshIdent()
+      for s1 <- algorithmM(context, f, MonoType.concrete("->", MonoType.Var(tParam), t))
           newContext: Context = s1(context)
-          s2 <- algorithmM(newContext, x, s1(MonoType.Var(b)))
+          s2 <- algorithmM(newContext, x, s1(MonoType.Var(tParam)))
         yield s1 compose s2
-    case Expr.Let(_, _, _) => ???
+    case Expr.Let(name, value, body) =>
+      val tValue = MonoType.Var(freshIdent())
+      for s1 <- algorithmM(context, value, tValue)
+          newContext: Context = s1(context)
+          generalizedTValue = generalize(newContext, s1(tValue))
+          s2 <- algorithmM(newContext.updated(name, generalizedTValue), body, t)
+        yield s1 compose s2

@@ -95,6 +95,16 @@ class ParserTest extends AnyFunSuite:
     assert(Parser("let f x y = y").get === result)
   }
 
+  test("let expr") {
+    assertParseExpr("let x = expr in value",
+      Expr.Let("x",
+        Expr.Var("expr"),
+        Expr.Var("value"),
+      )
+    )
+  }
+
+
   def assertParseExpr(src: String, expr: Expr): Unit = {
     val result = Declaration.Let(
       name = "x",
@@ -102,6 +112,8 @@ class ParserTest extends AnyFunSuite:
     )
 
     val out = Parser(s"let x = $src")
+    if !out.successful then
+      fail(out.toString())
 
     assert(out.get === List(result))
   }
