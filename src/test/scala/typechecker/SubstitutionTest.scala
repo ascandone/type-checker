@@ -1,3 +1,5 @@
+package typechecker
+
 import org.scalatest.funsuite.AnyFunSuite
 import typechecker.*
 

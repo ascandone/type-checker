@@ -1,6 +1,7 @@
+package typechecker
+
 import org.scalatest.funsuite.AnyFunSuite
-import typechecker.monoToPoly
-import typechecker.*
+import typechecker.{monoToPoly, *}
 
 import scala.collection.immutable.HashMap
 
