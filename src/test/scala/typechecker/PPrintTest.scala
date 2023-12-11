@@ -67,8 +67,8 @@ class PPrintTest extends AnyFunSuite:
 
   test("polytype should normalize vars") {
     val m =
-        PolyType.ForAll("t0",
-          PolyType.ForAll("t1",
+        PolyType.ForAll("t1",
+          PolyType.ForAll("t0",
             MonoType.concrete("T",
               MonoType.Var("t0"),
               MonoType.Var("t0"),
