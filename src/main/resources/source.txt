@@ -1,0 +1,7 @@
+let id x = x
+let uno = id one
+let vero = id true
+let apply f x = f x
+let z = apply succ one
+
+let compose f g x = f (g x)

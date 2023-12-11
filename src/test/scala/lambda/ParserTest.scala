@@ -6,40 +6,56 @@ class ParserTest extends AnyFunSuite:
   test("let decl") {
     val result = Declaration.Let(
       name = "x",
-      value = Expr.Variable("e")
+      value = Expr.Var("e")
     )
 
     assert(Parser("let x = e").get === List(result))
   }
 
   test("simple variable expr") {
-    assertParseExpr("z", Expr.Variable("z"))
+    assertParseExpr("z", Expr.Var("z"))
   }
 
   test("appl") {
     assertParseExpr("f x",
       Expr.App(
-        f = Expr.Variable("f"),
-        x = Expr.Variable("x"))
+        f = Expr.Var("f"),
+        x = Expr.Var("x"))
+    )
+  }
+
+  test("appl nested") {
+    assert(Parser("let x = a b c").get === Parser("let x = (a b) c").get)
+  }
+
+  test("appl in lambda") {
+    assertParseExpr("\\ x -> a b",
+      Expr.Abs(
+        param = "x",
+        body = Expr.App(
+          f = Expr.Var("a"),
+          x = Expr.Var("b")
+        )
+      )
     )
   }
 
   test("abstr") {
     assertParseExpr("\\ x -> y",
-      Expr.Fn(
+      Expr.Abs(
         param = "x",
-        body = Expr.Variable("y")
+        body = Expr.Var("y")
       )
     )
   }
 
   test("nested abstr sugar") {
     assertParseExpr("\\ x y -> y",
-      Expr.Fn(
+      Expr.Abs(
         param = "x",
-        body = Expr.Fn(
+        body = Expr.Abs(
           param = "y",
-          body = Expr.Variable("y")
+          body = Expr.Var("y")
         )
       )
     )
@@ -49,11 +65,11 @@ class ParserTest extends AnyFunSuite:
     val result = List(
       Declaration.Let(
         name = "x",
-        value = Expr.Variable("a")
+        value = Expr.Var("a")
       ),
       Declaration.Let(
         name = "y",
-        value = Expr.Variable("b")
+        value = Expr.Var("b")
       ),
     )
 
@@ -65,11 +81,11 @@ class ParserTest extends AnyFunSuite:
     val result = List(
       Declaration.Let(
         name = "f",
-        value = Expr.Fn(
+        value = Expr.Abs(
           param = "x",
-          body = Expr.Fn(
+          body = Expr.Abs(
             param = "y",
-            body = Expr.Variable("y")
+            body = Expr.Var("y")
           )
         )
       ),

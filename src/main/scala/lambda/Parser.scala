@@ -6,13 +6,13 @@ object Parser extends RegexParsers with PackratParsers {
   private val reserved = List("let")
 
   private def fnSugar(params: List[String], body: Expr) =
-    params.foldRight(body)(Expr.Fn.apply)
+    params.foldRight(body)(Expr.Abs.apply)
 
   private lazy val identifier: PackratParser[String] =
     """[a-zA-Z]+""".r.filter { x => !reserved.contains(x) }
 
   private lazy val variable: PackratParser[Expr] =
-    identifier ^^ { Expr.Variable.apply }
+    identifier ^^ { Expr.Var.apply }
 
   private lazy val abstraction: PackratParser[Expr] =
     "\\" ~> identifier.+ ~ "->" ~ expression ^^ {
@@ -22,8 +22,18 @@ object Parser extends RegexParsers with PackratParsers {
   private lazy val application: PackratParser[Expr] =
       expression ~ expression ^^ { case e1 ~ e2 => Expr.App(e1, e2) }
 
+  private lazy val applicable: PackratParser[Expr] =
+    variable | "(" ~> expression <~ ")"
+
+  private lazy val applicationChain: PackratParser[Expr] =
+    applicable.+ ^^ {
+      case x :: Nil => x
+      case f :: xs => xs.foldLeft(f)((f, x) => Expr.App(f, x))
+      case _ => throw java.lang.Error("Unreachable")
+    }
+
   private lazy val expression: PackratParser[Expr] =
-      abstraction | application | variable | "(" ~> expression <~ ")" ^^ { identity }
+      abstraction | applicationChain
 
   private lazy val letDeclaration: PackratParser[Declaration] =
       "let" ~> identifier.+ ~ "=" ~ expression ^^ {

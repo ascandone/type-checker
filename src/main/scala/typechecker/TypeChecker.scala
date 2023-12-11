@@ -1,13 +1,18 @@
 package typechecker
 
+import lambda.Expr
 import scala.annotation.tailrec
 import scala.collection.immutable.{HashMap, Map}
 
 // Ident for type variables
 type Ident = String
 
+private var counter = 0
+
 def freshIdent(): Ident =
-  java.util.UUID.randomUUID().toString
+  val c = counter
+  counter += 1
+  s"t$c"
 
 enum MonoType:
   case Var(ident: Ident)
@@ -136,12 +141,6 @@ def generalize(context: Context, polyType: PolyType): PolyType =
   val d = pFv diff ctxFv
   d.foldLeft(polyType)((p, v) => PolyType.ForAll(v, p))
 
-enum Expr:
-  case Var(name: Ident)
-  case Abs(param: Ident, body: Expr)
-  case App(f: Expr, x: Expr)
-  case Let(ident: Ident, value: Expr, body: Expr)
-
 case class TypeError(reason: String) extends Exception(reason)
 
 def algorithmW(context: Context, expr: Expr): (Substitution, MonoType) =
@@ -179,7 +178,7 @@ enum TypeCheckError:
   case UnboundVar(name: String)
   case Unify(err: UnifyError)
 
-def algorithmM(context: Context, expr: Expr, t: MonoType): Either[TypeCheckError, Substitution] =
+def algorithmM(context: Context, expr: Expr, t: MonoType = MonoType.Var(freshIdent())): Either[TypeCheckError, Substitution] =
   expr match
     case Expr.Var(ident) =>
       context.get(ident) match
@@ -193,11 +192,11 @@ def algorithmM(context: Context, expr: Expr, t: MonoType): Either[TypeCheckError
       for s1 <- unify(t, MonoType.concrete("->", MonoType.Var(b1), MonoType.Var(b2))).left.map(TypeCheckError.Unify.apply)
           newContext: Context = s1(context).updated(param, s1(MonoType.Var(b1)))
           s2 <- algorithmM(newContext, body, s1(MonoType.Var(b2)))
-      yield s2 compose s1
+      yield s1 compose s2
     case Expr.App(f, x) =>
       val b = freshIdent()
       for s1 <- algorithmM(context, f, MonoType.concrete("->", MonoType.Var(b), t))
           newContext: Context = s1(context)
           s2 <- algorithmM(newContext, x, s1(MonoType.Var(b)))
-        yield s2 compose s1
+        yield s1 compose s2
     case Expr.Let(_, _, _) => ???

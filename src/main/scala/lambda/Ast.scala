@@ -4,6 +4,7 @@ enum Declaration:
   case Let(name: String, value: Expr)
 
 enum Expr:
-  case Variable(name: String)
+  case Var(name: String)
   case App(f: Expr, x: Expr)
-  case Fn(param: String, body: Expr)
+  case Abs(param: String, body: Expr)
+  case Let(name: String, value: Expr, body: Expr)

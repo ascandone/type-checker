@@ -1,5 +1,6 @@
 package typechecker
 
+import lambda._
 import org.scalatest.funsuite.AnyFunSuite
 import typechecker.{monoToPoly, *}
 
@@ -83,7 +84,7 @@ class WTest extends AnyFunSuite:
     val id = Expr.Abs("a", Expr.Var("a"))
 
     val e = Expr.Let(
-      ident = "id",
+      name = "id",
       value = id,
       body = Expr.App(Expr.Var("id"), Expr.Var("x"))
     )
