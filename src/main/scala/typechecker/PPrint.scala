@@ -33,7 +33,35 @@ def pprint(monoType: MonoType): String =
       sb.toString()
 
 @tailrec
-def pprint(polyType: PolyType): String =
+private def pprintRec(polyType: PolyType): String =
   polyType match
-    case PolyType.ForAll(_, p) => pprint(p)
+    case PolyType.ForAll(_, p) => pprintRec(p)
     case PolyType.Mono(m) => pprint(m)
+
+
+def pprint(polyType: PolyType): String =
+  val n = Normalize().run(polyType)
+  pprintRec(n)
+
+val OFFSET = 'a'.toInt
+val MAX = 'z'.toInt
+
+class Normalize:
+  private var currentIndex = 0
+
+  private def freshIdent(): String =
+    // TODO handle overflow over 'z'
+    val index = currentIndex + OFFSET
+    currentIndex += 1
+    index.toChar.toString
+
+  def run(polyType: PolyType): PolyType =
+    polyType match
+      case PolyType.Mono(t) => t
+      case PolyType.ForAll(name, p) =>
+        val rec = run(p)
+        val newName = freshIdent()
+        val s = Substitution.fromEntries(
+          name -> MonoType.Var(newName)
+        )
+        PolyType.ForAll(newName, s(rec))

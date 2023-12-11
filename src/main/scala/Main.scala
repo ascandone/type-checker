@@ -10,17 +10,16 @@ def main(): Unit =
   val l = Source.fromResource("source.txt").mkString("")
   val parsed = Parser(l)
   val declarations = parsed.getOrElse {
-    println(parsed.toString)
     throw Error("Parsing error")
   }
-  println(declarations)
 
   var context: Context = HashMap(
     "one" -> MonoType.concrete("Int"),
     "true" -> MonoType.concrete("Bool"),
     "succ" -> MonoType.concrete("->",
         MonoType.concrete("Int"),
-        MonoType.concrete("Int"))
+        MonoType.concrete("Int")),
+    "empty" -> PolyType.ForAll("a", MonoType.concrete("List", MonoType.Var("a")))
   )
 
   for Declaration.Let(name, expr) <- declarations do

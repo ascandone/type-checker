@@ -42,11 +42,9 @@ case class Substitution(mappings: Map[Ident, MonoType]):
 
   def apply(polyType: PolyType): PolyType =
     polyType match
-      case PolyType.Mono(m) => PolyType.Mono(this.apply(m))
+      case PolyType.Mono(m) => this(m)
       case PolyType.ForAll(v, m) =>
-        // TODO why not substitution.removed(v) ?
-        val m1 = this.apply(m)
-        PolyType.ForAll(v, m1)
+        PolyType.ForAll(v, this(m))
 
   def apply(context: Context): Context =
     val entries = context.map((k, v) => (k, this(v))).toSeq
