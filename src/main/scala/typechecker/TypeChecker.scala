@@ -198,17 +198,17 @@ def algorithmM(context: Context, expr: Expr, t: MonoType): Either[TypeCheckError
           val m = instantiate(p)
           unify(t, m).left.map(TypeCheckError.Unify.apply)
     case Expr.Abs(param, body) =>
-      val b1 = freshIdent()
-      val b2 = freshIdent()
-      for s1 <- unify(t, MonoType.concrete("->", MonoType.Var(b1), MonoType.Var(b2))).left.map(TypeCheckError.Unify.apply)
-          newContext: Context = s1(context).updated(param, s1(MonoType.Var(b1)))
-          s2 <- algorithmM(newContext, body, s1(MonoType.Var(b2)))
+      val b1 = MonoType.Var(freshIdent())
+      val b2 = MonoType.Var(freshIdent())
+      for s1 <- unify(t, MonoType.concrete("->", b1, b2)).left.map(TypeCheckError.Unify.apply)
+          newContext: Context = s1(context).updated(param, s1(b1))
+          s2 <- algorithmM(newContext, body, s1(b2))
       yield s1 compose s2
     case Expr.App(f, x) =>
-      val tParam = freshIdent()
-      for s1 <- algorithmM(context, f, MonoType.concrete("->", MonoType.Var(tParam), t))
+      val tParam = MonoType.Var(freshIdent())
+      for s1 <- algorithmM(context, f, MonoType.concrete("->", tParam, t))
           newContext: Context = s1(context)
-          s2 <- algorithmM(newContext, x, s1(MonoType.Var(tParam)))
+          s2 <- algorithmM(newContext, x, s1(tParam))
         yield s1 compose s2
     case Expr.Let(name, value, body) =>
       val tValue = MonoType.Var(freshIdent())
