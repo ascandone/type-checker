@@ -2,6 +2,7 @@ package typechecker
 
 import org.scalatest.funsuite.AnyFunSuite
 import typechecker.*
+import typechecker.MonoType.Concrete
 
 import scala.collection.immutable.HashMap;
 
@@ -93,6 +94,43 @@ class UnifyTest extends AnyFunSuite:
       "b1" -> MonoType.Var("b2"),
     )))
   }
+
+  test("unify invariant") {
+    val t1 = MonoType.concrete("->",
+        MonoType.Var("a"),
+        MonoType.concrete("Bool"))
+
+    val t2 = MonoType.concrete("->",
+        MonoType.concrete("Int"),
+        MonoType.Var("b"),
+      )
+
+    val subst = unify(t1, t2).getOrElse {
+      throw new Error("Invalid subst")
+    }
+
+    assert(subst(t1) == subst(t2))
+  }
+
+  test("composing transitive unification") {
+    val a = MonoType.Var("a")
+    val b = MonoType.Var("b")
+    val int = MonoType.concrete("Int")
+
+    val s =
+      // s1 = {a => b}
+      // s1(a) = b
+
+      for s1 <- unify(a, b)
+        s2 <- unify(s1(a), int)
+      yield  s1 compose s2
+
+    assert(s === Right(Substitution.fromEntries(
+      "a" -> MonoType.concrete("Int"),
+      "b" -> MonoType.concrete("Int"),
+    )))
+  }
+
 
   test("unify identity error") {
     val t1 =
