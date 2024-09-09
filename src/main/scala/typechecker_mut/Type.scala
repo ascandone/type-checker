@@ -1,12 +1,18 @@
 package typechecker_mut
 
 import scala.collection.mutable
-import typechecker_mut.UnifyError.{TypeMismatch, OccursCheck}
-import typechecker_mut.Type.{Var, Named}
+import typechecker_mut.UnifyError.{OccursCheck, TypeMismatch}
+import typechecker_mut.Type.{Named, Var}
+
+import scala.annotation.tailrec
 
 enum Type:
   case Var(ident: Int)
   case Named(name: String, args: List[Type] = Nil)
+
+object Type:
+  def named(name: String, args: Type*): Type =
+    Named(name, args.toList)
 
 enum UnifyError:
   case OccursCheck
@@ -23,9 +29,12 @@ class Unifier {
     Type.Var(id)
   }
 
+  @tailrec
   private def resolveOnce(t: Type): Type = t match
     case Named(_, _) => t
-    case Var(id) => substitutions.getOrElse(id, t)
+    case Var(id) => substitutions.get(id) match
+      case Some(t) => resolveOnce(t)
+      case None => t
 
   def resolve(t: Type): Type = resolveOnce(t) match
     case Named(name, args) => Named(name, args.map(resolve))
