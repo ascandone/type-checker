@@ -1,8 +1,8 @@
-package typechecker
+package typechecker_mut
 
-import typechecker.UnifyError.{OccursCheck, TypeMismatch}
-import typechecker.Type.{Named, Var}
 import scala.collection.mutable
+import typechecker_mut.UnifyError.{TypeMismatch, OccursCheck}
+import typechecker_mut.Type.{Var, Named}
 
 enum Type:
   case Var(ident: Int)

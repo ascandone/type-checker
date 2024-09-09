@@ -4,8 +4,6 @@ import org.scalatest.funsuite.AnyFunSuite
 import typechecker.*
 import typechecker.MonoType.Concrete
 
-import scala.collection.immutable.HashMap;
-
 class UnifyTest extends AnyFunSuite:
   test("unifying two different concrete types should fail") {
     val t1 = MonoType.concrete("Bool")
