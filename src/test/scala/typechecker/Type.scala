@@ -23,24 +23,25 @@ class Unifier {
     Type.Var(id)
   }
 
-  private def resolveOnce(t: Type): Type =  t match {
-    case Type.Named(_, _) => t
-    case Type.Var(id) => substitutions.getOrElse(id, t)
-  }
+  private def resolveOnce(t: Type): Type = t match
+    case Named(_, _) => t
+    case Var(id) => substitutions.getOrElse(id, t)
 
-  // TODO resolve inner
+  def resolve(t: Type): Type = resolveOnce(t) match
+    case Named(name, args) => Named(name, args.map(resolve))
+    case t => t
 
-  private def unifyArgs(args: List[(Type, Type)]): Either[UnifyError, Unit] = args match {
+  private def unifyArgs(args: List[(Type, Type)]): Either[UnifyError, Unit] = args match
     case Nil => Right(())
     case (t1, t2) :: tl =>
       for
         Unit <- unify(t1, t2)
         Unit <- unifyArgs(tl)
       yield Right(())
-  }
 
-  // TODO impl
-  private def occursIn(id: Int, t: Type) = false
+  private def occursIn(id: Int, t: Type): Boolean = resolveOnce(t) match
+    case Var(id1) => id == id1
+    case Named(_, args) => args.exists(t => occursIn(id, t))
 
   def unify(t1: Type, t2: Type): Either[UnifyError, Unit] =
     (resolveOnce(t1), resolveOnce(t2)) match
@@ -54,5 +55,3 @@ class Unifier {
         Right(())
       case (Named(_, _), Var(_)) => unify(t2, t1)
 }
-
-
