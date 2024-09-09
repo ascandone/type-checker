@@ -44,10 +44,11 @@ class Unifier {
 
   def unify(t1: Type, t2: Type): Either[UnifyError, Unit] =
     (resolveOnce(t1), resolveOnce(t2)) match {
-      case (Type.Var(id1), Type.Var(id2)) if id1 == id2 => Right(())
       case (Type.Named(name1, _), Type.Named(name2, _)) if name1 != name2 => Left(TypeMismatch)
-      case (Type.Var(id), t@Type.Named(_, _)) if occursIn(id, t) => Left(OccursCheck)
       case (Type.Named(_, args1), Type.Named(_, args2)) => unifyArgs(args1 zip args2)
+
+      case (Type.Var(id1), Type.Var(id2)) if id1 == id2 => Right(())
+      case (Type.Var(id), t@Type.Named(_, _)) if occursIn(id, t) => Left(OccursCheck)
       case (Type.Var(id), _) =>
         substitutions.put(id, t2)
         Right(())
