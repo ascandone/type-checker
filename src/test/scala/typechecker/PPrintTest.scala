@@ -66,3 +66,66 @@ class PPrintTest extends AnyFunSuite:
       pprint(m) == "(t0 -> t1) -> t2"
     )
   }
+
+  test("closed empty record") {
+    val m = Type.Record(None, Map())
+
+    assert(
+      pprint(m) == "[]"
+    )
+  }
+
+  test("open empty record") {
+    val m = Type.Record(Some(Var(0)), Map())
+
+    assert(
+      pprint(m) == "[]t0"
+    )
+  }
+
+  test("closed record with fields") {
+    val m = Type.Record(None, Map(
+      "A" -> Type.named("Int"),
+      "B" -> Type.named("Bool"),
+    ))
+
+    assert(
+      pprint(m) == "[A Int, B Bool]"
+    )
+  }
+
+  test("open record with fields") {
+    val m = Type.Record(Some(Var(0)), Map(
+      "A" -> Type.named("Int"),
+      "B" -> Type.named("Bool"),
+    ))
+
+    assert(
+      pprint(m) == "[A Int, B Bool]t0"
+    )
+  }
+
+
+  test("nested record field") {
+    val r1 = Type.Record(Some(Var(0)), Map(
+      "B" -> Type.named("Bool"),
+    ))
+
+    val r = Type.Record(Some(r1), Map(
+      "A" -> Type.named("Int"),
+    ))
+
+    assert(
+      pprint(r) == "[A Int, B Bool]t0"
+    )
+  }
+
+  test("ignore record field nested with named") {
+    val r = Type.Record(Some(Type.named("Unit")), Map(
+      "A" -> Type.named("Int"),
+    ))
+
+    assert(
+      pprint(r) == "[A Int]"
+    )
+  }

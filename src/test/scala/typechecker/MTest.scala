@@ -78,6 +78,16 @@ class MTest extends AnyFunSuite:
     ))
   }
 
+  test("create poly variant") {
+    val ctx: Context = HashMap(
+      "unit" -> (Set.empty, Type.named("Unit"))
+    )
+
+    // val t = typesOf("let x = Poly unit")
+
+    // assert(t == HashMap("x" -> "[t0 | Poly Unit]"))
+  }
+
 
   def typesOf(src: String, context: Context = HashMap.empty): Map[String, String] = {
     val unifier = Unifier()
