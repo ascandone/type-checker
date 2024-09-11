@@ -1,6 +1,7 @@
 package typechecker_mut
 
 import scala.collection.mutable
+import scala.collection.immutable
 import typechecker_mut.UnifyError.{OccursCheck, TypeMismatch}
 import typechecker_mut.Type.{Named, Var}
 
@@ -13,6 +14,27 @@ enum Type:
 object Type:
   def named(name: String, args: Type*): Type =
     Named(name, args.toList)
+
+type TypeScheme = immutable.Set[Int]
+def generalise(t: Type): TypeScheme = t match
+  case Var(id) => immutable.Set(id)
+  case Named(_, args) => args.map(generalise).reduce(_ union _)
+
+def instantiate(unifier: Unifier, scheme: TypeScheme, t: Type): Type = {
+  val instantiated = mutable.HashMap[Int, Type]()
+
+  def loop(t: Type): Type = t match
+    case Var(id) => instantiated.get(id) match
+      case Some(t) => t
+      case None =>
+        val t = unifier.freshVar()
+        instantiated.put(id, t)
+        t
+    case Named(name, args) => Named(name, args.map(loop))
+
+  loop(t)
+}
+
 
 enum UnifyError:
   case OccursCheck

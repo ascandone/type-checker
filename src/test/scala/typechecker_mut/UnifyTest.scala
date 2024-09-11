@@ -99,6 +99,36 @@ class UnifyTest extends AnyFunSuite:
     // TODO swapped
   }
 
+  test("generalization") {
+    val t = Type.Named("Tuple2", List(
+      Type.Var(0),
+      Type.Var(1),
+      Type.Var(0),
+    ))
+
+    assert(generalise(t) == Set(0, 1))
+  }
+
+  test("instantiation") {
+    val unifier = Unifier()
+
+    val t0 = unifier.freshVar()
+    val t1 = unifier.freshVar()
+
+    val t = Type.Named("Tuple2", List(
+      t0,
+      t1,
+      t0,
+    ))
+
+    val scheme = generalise(t)
+
+    assert(instantiate(unifier, scheme, t) == Type.Named("Tuple2", List(
+      Type.Var(2),
+      Type.Var(3),
+      Type.Var(2),
+    )))
+  }
 
   test("unify identity error") {
     val unifier = Unifier()
