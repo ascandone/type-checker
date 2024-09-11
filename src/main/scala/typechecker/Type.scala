@@ -1,9 +1,9 @@
-package typechecker_mut
+package typechecker
 
 import scala.collection.mutable
 import scala.collection.immutable
-import typechecker_mut.UnifyError.{OccursCheck, TypeMismatch}
-import typechecker_mut.Type.{Named, Var}
+import typechecker.UnifyError.{OccursCheck, TypeMismatch}
+import typechecker.Type.{Named, Var}
 
 import scala.annotation.tailrec
 
@@ -24,12 +24,13 @@ def instantiate(unifier: Unifier, scheme: TypeScheme, t: Type): Type = {
   val instantiated = mutable.HashMap[Int, Type]()
 
   def loop(t: Type): Type = t match
-    case Var(id) => instantiated.get(id) match
+    case Var(id) if scheme.contains(id) => instantiated.get(id) match
       case Some(t) => t
       case None =>
         val t = unifier.freshVar()
         instantiated.put(id, t)
         t
+    case Var(_) => t
     case Named(name, args) => Named(name, args.map(loop))
 
   loop(t)

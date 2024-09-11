@@ -9,6 +9,5 @@ let compose f g x = g (f x)
 let hd = head empty
 
 let example =
-  let f x = x in
-  let a = f head in
-  f one
+  let a = id head in
+  id one

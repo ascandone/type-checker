@@ -1,6 +1,5 @@
 import lambda._
 import typechecker._
-import typechecker.monoToPoly
 
 import scala.collection.immutable.HashMap
 import scala.io.Source
@@ -14,23 +13,28 @@ def main(): Unit =
   }
 
   var context: Context = HashMap(
-    "one" -> MonoType.concrete("Int"),
-    "true" -> MonoType.concrete("Bool"),
-    "succ" -> MonoType.concrete("->",
-        MonoType.concrete("Int"),
-        MonoType.concrete("Int")),
-    "empty" -> PolyType.ForAll("a", MonoType.concrete("List", MonoType.Var("a"))),
-    "head" -> PolyType.ForAll("a",
-      MonoType.concrete("->",
-        MonoType.concrete("List", MonoType.Var("a")),
-        MonoType.concrete("Maybe", MonoType.Var("a"))))
+    "one" -> (Set.empty, Type.named("Int")),
+    "true" -> (Set.empty, Type.named("Bool")),
+    "succ" -> (Set.empty, Type.named("->",
+      Type.named("Int"),
+      Type.named("Int"))),
+    "empty" -> (
+        Set(0),
+        Type.named("List", Type.Var(0))
+      ),
+    "head" -> (
+      Set(0),
+      Type.named("->",
+        Type.named("List", Type.Var(0)),
+        Type.named("Maybe", Type.Var(0)),
+      )
+    ),
   )
 
-  for Declaration.Let(name, expr) <- declarations do
-      val m = MonoType.Var(freshIdent())
-      val s = algorithmM(context, expr, m).toOption.get
-
-      val res = generalize(context, s(m))
-
-      println(s"$name :: ${pprint(res)}")
-      context = s(context).updated(name, res)
+  val tc = Typechecker()
+  val out = tc.typecheckDeclarations(declarations, context)
+  out match
+    case Left(err) => println(err)
+    case Right(out) =>
+      for (name, (_, res)) <- out -- context.keys
+      do println(s"$name :: ${pprint(res)}")

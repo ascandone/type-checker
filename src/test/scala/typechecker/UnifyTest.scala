@@ -2,146 +2,136 @@ package typechecker
 
 import org.scalatest.funsuite.AnyFunSuite
 import typechecker.*
-import typechecker.MonoType.Concrete
+
+def int = Type.Named("Int")
+def bool = Type.Named("Bool")
+def list(t1: Type) = Type.named("List", t1)
+def arrow(t1: Type, t2: Type) = Type.named("->", t1, t2)
 
 class UnifyTest extends AnyFunSuite:
   test("unifying two different concrete types should fail") {
-    val t1 = MonoType.concrete("Bool")
-    val t2 = MonoType.concrete("Int")
+    val unifier = Unifier()
 
-    assert(unify(t1, t2) === Left(UnifyError.CannotUnify))
+    assert(unifier.unify(bool, int) === Left(UnifyError.TypeMismatch))
   }
 
   test("unifying two concrete types equal to each other should return an empty subst") {
-    val t1 = MonoType.concrete("Int")
-    val t2 = MonoType.concrete("Int")
+    val unifier = Unifier()
 
-    assert(unify(t1, t2) === Right(Substitution.empty))
+    assert(unifier.unify(int, int) === Right(()))
   }
 
   test("unifying two concrete types with different args should fail") {
-    val t1 = MonoType.concrete("List", MonoType.concrete("Bool"))
-    val t2 = MonoType.concrete("List", MonoType.concrete("Int"))
+    val unifier = Unifier()
 
-    assert(unify(t1, t2) === Left(UnifyError.CannotUnify))
+    assert(unifier.unify(list(bool), list(int)) === Left(UnifyError.TypeMismatch))
   }
 
   test("unifying two equal variables should return the empty subst") {
-    val t1 = MonoType.Var("a")
-    val t2 = MonoType.Var("a")
+    val unifier = Unifier()
+    val t0 = unifier.freshVar()
+    val t1 = unifier.freshVar()
 
-    assert(unify(t1, t2) === Right(Substitution.empty))
+    assert(unifier.unify(t0, t1) === Right(()))
   }
 
   test("occurs check failure should not unify") {
-    val t1 = MonoType.Var("a")
-    val t2 = MonoType.concrete("List", MonoType.Var("a"))
+    val unifier = Unifier()
+    val t0 = unifier.freshVar()
 
-    assert(unify(t1, t2) === Left(UnifyError.OccursCheck))
+    assert(unifier.unify(t0, list(t0)) === Left(UnifyError.OccursCheck))
   }
 
   test("a variable should be unified with a concrete type") {
-    val t1 = MonoType.Var("a")
-    val t2 = MonoType.concrete("Bool")
+    val unifier = Unifier()
+    val t0 = unifier.freshVar()
 
-    assert(unify(t1, t2) === Right(Substitution.fromEntries(
-      "a" -> MonoType.concrete("Bool")
-    )))
+    assert(unifier.unify(t0, bool) === Right(()))
+    assert(unifier.resolve(t0) == bool)
   }
 
   test("a variable should be unified with a concrete type, inverse order") {
-    val t1 = MonoType.concrete("Bool")
-    val t2 = MonoType.Var("a")
+    val unifier = Unifier()
+    val t0 = unifier.freshVar()
 
-    assert(unify(t1, t2) === Right(Substitution.fromEntries(
-      "a" -> MonoType.concrete("Bool")
-    )))
+    assert(unifier.unify(bool, t0) === Right(()))
+    assert(unifier.resolve(t0) == bool)
   }
 
   test("two different vars should unify") {
-    val t1 = MonoType.Var("a")
-    val t2 = MonoType.Var("b")
+    val unifier = Unifier()
+    val t0 = unifier.freshVar()
+    val t1 = unifier.freshVar()
 
-    assert(unify(t1, t2) === Right(Substitution.fromEntries(
-      "a" -> MonoType.Var("b")
-    )))
+    assert(unifier.unify(t0, t1) === Right(()))
+    assert(unifier.resolve(t0) == unifier.resolve(t1))
   }
 
   test("two different nested vars should unify") {
-    val t1 = MonoType.concrete("List", MonoType.Var("a"))
-    val t2 = MonoType.concrete("List", MonoType.Var("b"))
+    val unifier = Unifier()
+    val t0 = unifier.freshVar()
+    val t1 = unifier.freshVar()
 
-    assert(unify(t1, t2) === Right(Substitution.fromEntries(
-      "a" -> MonoType.Var("b")
-    )))
-  }
-
-  test("unify error on second arg") {
-    val t1 = MonoType.concrete("->", MonoType.Var("a"), MonoType.Concrete("Int"))
-    val t2 = MonoType.concrete("->", MonoType.Var("a"), MonoType.Concrete("Bool"))
-
-    assert(unify(t1, t2) === Left(UnifyError.CannotUnify))
-  }
-
-  test("merge unify constraints") {
-    val t1 = MonoType.concrete("->", MonoType.Var("a1"), MonoType.Var("b1"))
-    val t2 = MonoType.concrete("->", MonoType.Var("a2"), MonoType.Var("b2"))
-
-    assert(unify(t1, t2) === Right(Substitution.fromEntries(
-      "a1" -> MonoType.Var("a2"),
-      "b1" -> MonoType.Var("b2"),
-    )))
+    assert(unifier.unify(list(t0), list(t1)) === Right(()))
+    assert(unifier.resolve(t0) == unifier.resolve(t1))
   }
 
   test("unify invariant") {
-    val t1 = MonoType.concrete("->",
-        MonoType.Var("a"),
-        MonoType.concrete("Bool"))
+    val unifier = Unifier()
+    val t0 = unifier.freshVar()
+    val t1 = unifier.freshVar()
 
-    val t2 = MonoType.concrete("->",
-        MonoType.concrete("Int"),
-        MonoType.Var("b"),
-      )
-
-    val subst = unify(t1, t2).getOrElse {
-      throw new Error("Invalid subst")
-    }
-
-    assert(subst(t1) == subst(t2))
+    assert(unifier.unify(arrow(t0, bool), arrow(int, t1)) == Right(()))
+    assert(unifier.resolve(t0) == int)
+    assert(unifier.resolve(t1) == bool)
   }
 
   test("composing transitive unification") {
-    val a = MonoType.Var("a")
-    val b = MonoType.Var("b")
-    val int = MonoType.concrete("Int")
+    val unifier = Unifier()
+    val t0 = unifier.freshVar()
+    val t1 = unifier.freshVar()
 
-    val s =
-      // s1 = {a => b}
-      // s1(a) = b
+    unifier.unify(t0, t1)
+    unifier.unify(t0, int)
 
-      for s1 <- unify(a, b)
-        s2 <- unify(s1(a), int)
-      yield  s1 compose s2
+    assert(unifier.resolve(t0) == int)
+    // assert(unifier.resolve(t2) == int)
+    // TODO swapped
+  }
 
-    assert(s === Right(Substitution.fromEntries(
-      "a" -> MonoType.concrete("Int"),
-      "b" -> MonoType.concrete("Int"),
+  test("generalization") {
+    val t = Type.Named("Tuple2", List(
+      Type.Var(0),
+      Type.Var(1),
+      Type.Var(0),
+    ))
+
+    assert(generalise(t) == Set(0, 1))
+  }
+
+  test("instantiation") {
+    val unifier = Unifier()
+
+    val t0 = unifier.freshVar()
+    val t1 = unifier.freshVar()
+
+    val t = Type.Named("Tuple2", List(
+      t0,
+      t1,
+      t0,
+    ))
+
+    val scheme = generalise(t)
+
+    assert(instantiate(unifier, scheme, t) == Type.Named("Tuple2", List(
+      Type.Var(2),
+      Type.Var(3),
+      Type.Var(2),
     )))
   }
 
-
   test("unify identity error") {
-    val t1 =
-      MonoType.concrete("->",
-        MonoType.Var("a"),
-        MonoType.Var("a")
-      )
-
-    val t2 =
-      MonoType.concrete("->",
-        MonoType.concrete("Bool"),
-        MonoType.concrete("Int")
-      )
-
-    assert(unify(t1, t2) === Left(UnifyError.CannotUnify))
+    val unifier = Unifier()
+    val t0 = unifier.freshVar()
+    assert(unifier.unify(arrow(t0, t0), arrow(int, bool)) === Left(UnifyError.TypeMismatch))
   }

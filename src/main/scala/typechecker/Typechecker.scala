@@ -1,4 +1,4 @@
-package typechecker_mut
+package typechecker
 
 import lambda.{Declaration, Expr}
 
@@ -7,19 +7,17 @@ import scala.collection.immutable
 type Context = immutable.Map[String, (TypeScheme, Type)]
 
 enum TypecheckError:
-  case UnifyError(t1: Type, t2: Type, unifyError: typechecker_mut.UnifyError)
+  case UnifyError(t1: Type, t2: Type, unifyError: typechecker.UnifyError)
   case UnboundVar(name: String)
 
 class Typechecker(val unifier: Unifier = Unifier()) {
-
   private def unify(t1: Type, t2: Type) =
       unifier.unify(t1, t2).left.map(e => TypecheckError.UnifyError(t1, t2, e))
 
-
-  def typecheckExpr(expr: Expr, t: Type, ctx: Context): Either[TypecheckError, Unit] = expr match
+  private def typecheckExpr(expr: Expr, t: Type, ctx: Context): Either[TypecheckError, Unit] = expr match
     case Expr.Var(name) => ctx.get(name) match
       case None => Left(TypecheckError.UnboundVar(name))
-      case Some((scheme, typeLookup)) => unify(typeLookup, t)
+      case Some((scheme, typeLookup)) => unify(instantiate(unifier, scheme, typeLookup), t)
     case Expr.App(f, x) =>
       val ft = unifier.freshVar()
       val xt = unifier.freshVar()
@@ -44,8 +42,8 @@ class Typechecker(val unifier: Unifier = Unifier()) {
 
 
   def typecheckDeclarations(declarations: List[Declaration], initialContext: Context = immutable.HashMap.empty): Either[TypecheckError, Context] =
-    declarations.foldRight(Right(initialContext): Either[TypecheckError, Context])(
-        (declaration, ctxResult) => declaration match
+    declarations.foldLeft(Right(initialContext): Either[TypecheckError, Context])(
+        (ctxResult, declaration) => declaration match
           case Declaration.Let(name, expr) =>
             val fresh = unifier.freshVar()
             for

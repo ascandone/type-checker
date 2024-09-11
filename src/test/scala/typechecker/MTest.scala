@@ -8,15 +8,14 @@ import scala.collection.immutable.HashMap
 
 class MTest extends AnyFunSuite:
   test("type check mono variable bound in context") {
-
     val ctx: Context = HashMap(
-      "one" -> MonoType.concrete("Int")
+      "one" -> (Set.empty, Type.named("Int"))
     )
 
     val t = typesOf("let x = one", ctx)
 
     assert(t == HashMap(
-      "x" -> "Int"
+      "x" -> "Int",
     ))
   }
 
@@ -24,12 +23,12 @@ class MTest extends AnyFunSuite:
     val t = typesOf("let f = \\x -> x")
 
     assert(t == HashMap(
-      "f" -> "a -> a"
+      "f" -> "t0 -> t0"
     ))
   }
 
   test("type check abstraction using a fn") {
-    val ctx: Context = HashMap("iseven" -> MonoType.concrete("->", MonoType.concrete("Int"), MonoType.concrete("Bool")))
+    val ctx: Context = HashMap("iseven" -> (Set.empty, Type.named("->", Type.named("Int"), Type.named("Bool"))))
     val t = typesOf("let f = \\x -> iseven x", ctx)
 
     assert(t == HashMap(
@@ -41,21 +40,58 @@ class MTest extends AnyFunSuite:
     val t = typesOf("let f = \\x -> \\y -> y x")
 
     assert(t == HashMap(
-      "f" -> "a -> (a -> b) -> b"
+      "f" -> "t0 -> (t0 -> t1) -> t1"
     ))
   }
 
 
-  def typesOf(src: String, context: Context = HashMap.empty) = {
-    val parsed = Parser(src).get
-    parsed.foldRight(HashMap.empty)((decl, map: HashMap[String, String]) => {
-      decl match {
-        case Declaration.Let(name, expr) =>
-          val m = MonoType.Var(freshIdent())
-          val s = algorithmM(context, expr, m).toOption.get
-          val res = generalize(context, s(m))
-          map.updated(name, pprint(res))
-      }
-    })
+  test("lookup previously defined values") {
+    val t = typesOf(
+      """
+        | let id = \a -> a
+        | let y = id
+        |""".stripMargin)
 
+    assert(t == HashMap(
+      "id" -> "t0 -> t0",
+      "y" -> "t0 -> t0",
+    ))
+  }
+
+  test("generalise top-level let") {
+    val ctx: Context = HashMap(
+      "unit" -> (Set.empty, Type.named("Unit")),
+      "one" -> (Set.empty, Type.named("Num"))
+    )
+    val t = typesOf(
+      """
+        | let id = \a -> a
+        | let x = id unit
+        | let y = id one
+        |""".stripMargin,
+      ctx)
+
+    assert(t == HashMap(
+      "id" -> "t0 -> t0",
+      "x" -> "Unit",
+      "y" -> "Num",
+    ))
+  }
+
+
+  def typesOf(src: String, context: Context = HashMap.empty): Map[String, String] = {
+    val unifier = Unifier()
+    val tc = Typechecker(unifier)
+
+    val parsed = Parser(src).get
+    val ctx = tc.typecheckDeclarations(parsed, context) match {
+      case Left(e) => {
+        throw new Error(e.toString)
+      }
+      case Right(x) => x
+    }
+    (ctx -- context.keys).map((k, v) => (
+      k,
+      pprint(v._2)
+    ))
   }
