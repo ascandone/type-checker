@@ -18,7 +18,7 @@ object Type:
 type TypeScheme = immutable.Set[Int]
 def generalise(t: Type): TypeScheme = t match
   case Var(id) => immutable.Set(id)
-  case Named(_, args) => args.map(generalise).reduce(_ union _)
+  case Named(_, args) => args.map(generalise).foldLeft(Set.empty)(_ union _)
 
 def instantiate(unifier: Unifier, scheme: TypeScheme, t: Type): Type = {
   val instantiated = mutable.HashMap[Int, Type]()

@@ -8,15 +8,15 @@ import scala.collection.immutable.HashMap
 
 class MTest extends AnyFunSuite:
   test("type check mono variable bound in context") {
-
     val ctx: Context = HashMap(
-      "one" -> Type.named("Int")
+      "one" -> (Set.empty, Type.named("Int"))
     )
 
     val t = typesOf("let x = one", ctx)
 
     assert(t == HashMap(
-      "x" -> "Int"
+      "one" -> "Int",
+      "x" -> "Int",
     ))
   }
 
@@ -24,15 +24,16 @@ class MTest extends AnyFunSuite:
     val t = typesOf("let f = \\x -> x")
 
     assert(t == HashMap(
-      "f" -> "t2 -> t2"
+      "f" -> "t0 -> t0"
     ))
   }
 
   test("type check abstraction using a fn") {
-    val ctx: Context = HashMap("iseven" -> Type.named("->", Type.named("Int"), Type.named("Bool")))
+    val ctx: Context = HashMap("iseven" -> (Set.empty, Type.named("->", Type.named("Int"), Type.named("Bool"))))
     val t = typesOf("let f = \\x -> iseven x", ctx)
 
     assert(t == HashMap(
+      "iseven" -> "Int -> Bool",
       "f" -> "Int -> Bool"
     ))
   }
@@ -41,26 +42,16 @@ class MTest extends AnyFunSuite:
     val t = typesOf("let f = \\x -> \\y -> y x")
 
     assert(t == HashMap(
-      "f" -> "t6 -> (t6 -> t4) -> t4"
+      "f" -> "t0 -> (t0 -> t1) -> t1"
     ))
   }
 
 
-  def typesOf(src: String, context: Context = HashMap.empty) = {
+  def typesOf(src: String, context: Context = HashMap.empty): Map[String, String] = {
     val unifier = Unifier()
     val tc = Typechecker(unifier)
 
     val parsed = Parser(src).get
-    parsed.foldRight(HashMap.empty)((decl, map: HashMap[String, String]) => {
-      decl match {
-        case Declaration.Let(name, expr) =>
-          val t = unifier.freshVar()
-          tc.typecheckExpr(expr, t, context).toOption.get
-
-          // val res = generalize(context, s(m))
-          val tres = unifier.resolve(t)
-          map.updated(name, pprint(tres))
-      }
-    })
-
+    val ctx = tc.typecheckDeclarations(parsed, context).toOption.get
+    ctx.map((k, v) => (k, pprint(v._2)))
   }

@@ -2,7 +2,7 @@ package typechecker_mut
 
 import typechecker_mut.Type.*
 
-def pprint(t: Type): String =
+private def pprintHelper(t: Type): String =
   t match
     case Var(v) => "t" + v.toString
     case Named("->", left :: right :: Nil) =>
@@ -10,13 +10,13 @@ def pprint(t: Type): String =
       left match
         case Named("->", _) =>
           sb ++= "("
-          sb ++= pprint(left)
+          sb ++= pprintHelper(left)
           sb ++= ")"
         case _ =>
-          sb ++= pprint(left)
+          sb ++= pprintHelper(left)
 
       sb ++= " -> "
-      sb ++= pprint(right)
+      sb ++= pprintHelper(right)
       sb.toString()
     case Named(c, args) =>
       val sb = StringBuilder()
@@ -26,12 +26,16 @@ def pprint(t: Type): String =
         arg match
           case Named(_, _) =>
             sb ++= "("
-            sb ++= pprint(arg)
+            sb ++= pprintHelper(arg)
             sb ++= ")"
           case Var(_) =>
-            sb ++= pprint(arg)
+            sb ++= pprintHelper(arg)
       sb.toString()
 
+def pprint(t: Type): String =
+  val scheme = generalise(t)
+  val canonical = instantiate(Unifier(), scheme, t)
+  pprintHelper(canonical)
 
 val OFFSET = 'a'.toInt
 val MAX = 'z'.toInt
