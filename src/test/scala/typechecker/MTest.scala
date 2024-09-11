@@ -1,6 +1,6 @@
 package typechecker
 
-import lambda.{Declaration, Expr, Parser}
+import lambda.Parser
 import org.scalatest.compatible.Assertion
 import org.scalatest.funsuite.AnyFunSuite
 

@@ -1,11 +1,8 @@
 package typechecker
 
-import scala.collection.mutable
-import scala.collection.immutable
+import scala.collection.{mutable, immutable}
 import typechecker.UnifyError.{OccursCheck, TypeMismatch}
 import typechecker.Type.{Named, Record, Var}
-import scala.collection.{immutable, mutable}
-
 import scala.annotation.tailrec
 
 enum Type:
