@@ -67,13 +67,18 @@ class Unifier {
       case Some(t) => resolveOnce(t)
       case None => t
 
+  private def resolveRecord(open: Option[Type], fields: Map[String, Type]): Type = open map resolve match
+    case Some(t2@Record(open, fields2)) => resolve(
+      Record(open, fields2 ++ fields)
+    )
+    case _ => Record(
+      open,
+      fields.map((field, t) => (field, resolve(t)))
+    )
+
   def resolve(t: Type): Type = resolveOnce(t) match
     case Named(name, args) => Named(name, args.map(resolve))
-    case t@Record(None, _) => t
-    case t@Record(Some(r), fields) => resolve(r) match
-      case Record(r2, fields2) => Record(r2, fields2 ++ fields)
-      case t@Var(_) => Record(Some(t), fields)
-      case _ => t
+    case t@Record(open, fields) => resolveRecord(open map resolve, fields)
     case t@Var(_) => t
 
   private def unifyArgs(args: List[(Type, Type)]): Either[UnifyError, Unit] = args match

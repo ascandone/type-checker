@@ -15,7 +15,18 @@ class Typechecker(val unifier: Unifier = Unifier()) {
       unifier.unify(t1, t2).left.map(e => TypecheckError.UnifyError(t1, t2, e))
 
   private def typecheckExpr(expr: Expr, t: Type, ctx: Context): Either[TypecheckError, Unit] = expr match
-    case Expr.Var(name) if name.charAt(0).isUpper => ???
+    case Expr.Var(name) if name.charAt(0).isUpper =>
+      val open = unifier.freshVar()
+
+      val recordArg = unifier.freshVar()
+      val recordType = Type.Record(
+        Some(open),
+        Map(
+          name -> recordArg
+        )
+      )
+
+      unify(t, Type.named("->", recordArg, recordType))
 
     case Expr.Var(name) => ctx.get(name) match
       case None => Left(TypecheckError.UnboundVar(name))

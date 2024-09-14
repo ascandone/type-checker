@@ -82,10 +82,23 @@ class MTest extends AnyFunSuite:
     val ctx: Context = HashMap(
       "unit" -> (Set.empty, Type.named("Unit"))
     )
+    val t = typesOf("let x = Poly unit", ctx)
+     assert(t == HashMap("x" -> "[Poly Unit]t0"))
+  }
 
-    // val t = typesOf("let x = Poly unit")
+  test("create poly variant with var arg") {
+    val t = typesOf("let x = \\x -> Poly x")
+    assert(t == HashMap("x" -> "t0 -> [Poly t0]t1"))
+  }
 
-    // assert(t == HashMap("x" -> "[t0 | Poly Unit]"))
+  test("unify variants") {
+    val ctx: Context = HashMap(
+      // same :: a -> a -> a
+      "same" -> (Set(0), Type.named("->", Type.Var(0), Type.named("->", Type.Var(0), Type.Var(0))))
+    )
+
+    val t = typesOf("let f = \\x -> same (A x) (B x)", ctx)
+    assert(t == HashMap("f" -> "t0 -> [A t0, B t0]t1"))
   }
 
 

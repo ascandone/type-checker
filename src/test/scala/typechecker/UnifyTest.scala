@@ -2,7 +2,8 @@ package typechecker
 
 import org.scalatest.funsuite.AnyFunSuite
 import typechecker.*
-import typechecker.Type.{Named, Record}
+import typechecker.Type.{Named, Record, Var}
+
 import scala.collection.immutable
 
 def int = Type.Named("Int")
@@ -254,4 +255,15 @@ class UnifyTest extends AnyFunSuite:
         "x" -> Named("Unit"),
       )
     ))
+  }
+
+  test("unify var with record") {
+    val unifier = Unifier()
+    val either = unifier.unify(
+      Var(0),
+      Record(Some(Var(1)), Map())
+    )
+
+    assert(either == Right(()))
+
   }
