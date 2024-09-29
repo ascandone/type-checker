@@ -15,6 +15,13 @@ def main(): Unit =
   var context: Context = HashMap(
     "one" -> (Set.empty, Type.named("Int")),
     "true" -> (Set.empty, Type.named("Bool")),
+    "ifThenElse" -> (Set(0), Type.named("->",
+      Type.named("Bool"),
+      Type.named("->" ,
+        Type.Var(0),
+        Type.named("->" ,
+          Type.Var(0),
+          Type.Var(0))))),
     "succ" -> (Set.empty, Type.named("->",
       Type.named("Int"),
       Type.named("Int"))),
@@ -36,5 +43,5 @@ def main(): Unit =
   out match
     case Left(err) => println(err)
     case Right(out) =>
-      for (name, (_, res)) <- out -- context.keys
+      for (name, (_, res)) <- (out -- context.keys).toList.sortBy(p => p._1)
       do println(s"$name :: ${pprint(res)}")

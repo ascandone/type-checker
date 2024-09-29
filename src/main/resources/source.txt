@@ -8,6 +8,5 @@ let compose f g x = g (f x)
 
 let hd = head empty
 
-let example =
-  let a = id head in
-  id one
+let example = \b p ->
+    ifThenElse b (Ok one) (Err p)
